@@ -6,6 +6,14 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
+# Create a MongoClient object with your connection string
+connection_string = 'mongodb+srv://cardio1697:Root123@cluster0.o1uhh6a.mongodb.net/?tlsCAFile=cacert.pem'
+
+# Connect to the database
+mongo_client = MongoClient(connection_string)
+
+database_name = 'Cardio_Test'
+collection_name = 'cardio_collection'
 
 def get_image_from_cloudinary(mongo_client, database_name, collection_name, user_id):
     """
@@ -161,14 +169,6 @@ def home():
 
 
 if __name__ == "__main__":
-    # Create a MongoClient object with your connection string
-    connection_string = 'mongodb+srv://cardio1697:Root123@cluster0.o1uhh6a.mongodb.net/?tlsCAFile=cacert.pem'
-
-    # Connect to the database
-    mongo_client = MongoClient(connection_string)
-
-    database_name = 'Cardio_Test'
-    collection_name = 'cardio_collection'
 
     # with app.app_context():
     #     response = get_image_url(1)
