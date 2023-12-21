@@ -175,4 +175,4 @@ if __name__ == "__main__":
     #     print(response.data.decode('utf-8'))
 
     # Run the Flask app
-    app.run(port = 5012)
+    app.run(host="0.0.0.0", threaded=True, port=5000)
