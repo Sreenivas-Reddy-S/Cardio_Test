@@ -1,11 +1,21 @@
-from flask import Flask, jsonify, request, redirect, url_for
+from flask import Flask, jsonify, request, redirect, url_for, session
 from pymongo import MongoClient
 from cloudinary import config, utils
 from flask_cors import CORS
 from bson import ObjectId
+from functools import wraps
+from flask_bcrypt import Bcrypt
 
 app = Flask(__name__)
 CORS(app)
+app.secret_key = 'mysecretkey123'
+
+bcrypt = Bcrypt(app)
+
+
+def hash_password(password):
+    return bcrypt.generate_password_hash(password).decode('utf-8')
+
 
 # Create a MongoClient object with your connection string
 connection_string = 'mongodb+srv://cardio1697:Root123@cluster0.o1uhh6a.mongodb.net/Cardio_Test?tlsCAFile=cacert.pem'
@@ -15,6 +25,16 @@ mongo_client = MongoClient(connection_string)
 
 database_name = 'Cardio_Test'
 collection_name = 'cardio_collection'
+
+users_collection_name = 'users_collection'
+
+users_collection_schema = {
+    "username": str,
+    "password": str,
+    "first_name": str,
+    "last_name": str,
+    "email": str,
+}
 
 
 def get_image_from_cloudinary(mongo_client, database_name, collection_name, user_id):
@@ -182,6 +202,67 @@ def insert_user():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/register", methods=["POST"])
+def register_user():
+    try:
+        data = request.json
+        hashed_password = hash_password(data["password"])
+
+        new_user = {
+            "username": data["username"],
+            "password": hashed_password,
+            "first_name": data["first_name"],
+            "last_name": data["last_name"],
+            "email": data["email"],
+        }
+
+        # Connect to the specified database and collection
+        db = mongo_client[database_name]
+        collection = db[users_collection_name]
+
+        result = collection.insert_one(new_user)
+
+        return jsonify({"success": "User registered successfully", "user_id": str(result.inserted_id)}), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/login", methods=["POST"])
+def login_user():
+    try:
+        db = mongo_client[database_name]
+        collection = db[users_collection_name]
+        data = request.json
+        user = collection.find_one({"username": data["username"]})
+
+        if user and bcrypt.check_password_hash(user["password"], data["password"]):
+            session["user_id"] = str(user["_id"])
+            return jsonify({"success": "Login successful", "user_id": session["user_id"]}), 200
+        else:
+            return jsonify({"error": "Invalid username or password"}), 401
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "user_id" not in session:
+            return jsonify({"error": "Unauthorized"}), 401
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+@app.route("/logout")
+@login_required
+def logout_user():
+    session.pop("user_id", None)
+    return jsonify({"success": "Logout successful"}), 200
+
+
 @app.route("/edit/<int:user_id>", methods=["GET"])
 def edit_user(user_id):
     return redirect(url_for('edit_user_page', user_id=user_id))
@@ -201,3 +282,4 @@ def home():
 if __name__ == "__main__":
     # Run the Flask app
     app.run(host="0.0.0.0", port=5000)
+    # app.run(host="127.0.0.1", port=5012)
