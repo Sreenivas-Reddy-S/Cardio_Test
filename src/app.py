@@ -2,12 +2,13 @@ from flask import Flask, jsonify, request, redirect, url_for
 from pymongo import MongoClient
 from cloudinary import config, utils
 from flask_cors import CORS
+from bson import ObjectId
 
 app = Flask(__name__)
 CORS(app)
 
 # Create a MongoClient object with your connection string
-connection_string = 'mongodb+srv://cardio1697:Root123@cluster0.o1uhh6a.mongodb.net/?tlsCAFile=cacert.pem'
+connection_string = 'mongodb+srv://cardio1697:Root123@cluster0.o1uhh6a.mongodb.net/Cardio_Test?tlsCAFile=cacert.pem'
 
 # Connect to the database
 mongo_client = MongoClient(connection_string)
@@ -78,6 +79,31 @@ def get_image_url(image_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/userdata/<int:image_id>", methods=["GET"])
+def get_user_data(image_id):
+    try:
+        # Connect to the specified database and collection
+        db = mongo_client[database_name]
+        collection = db[collection_name]
+
+        # Find the document with the matching ID in the collection
+        document = collection.find_one({"id": image_id})
+
+        # Check if the document exists
+        if not document:
+            return jsonify({"error": f"User not found for ID {id}"}), 404
+
+        # Convert ObjectId to string
+        document['_id'] = str(document['_id'])
+
+        return jsonify(document)
+
+    except ValueError as ve:
+        return jsonify({"error": f"Invalid user ID format: {str(ve)}"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/user/<int:user_id>", methods=["PUT"])
 def update_user(user_id):
     try:
@@ -100,8 +126,8 @@ def update_user(user_id):
         print("Received JSON data:", request.json)
 
         # Parse height and weight from request data
-        new_height = int(request.json.get("sessionsByUser", {}).get(str(user_id), {}).get("height", 0))
-        new_weight = float(request.json.get("sessionsByUser", {}).get(str(user_id), {}).get("weight", 0.0))
+        new_height = int(request.json.get("height", 0))
+        new_weight = float(request.json.get("weight", 0.0))
 
         # Print parsed height and weight
         print(f"Parsed height: {new_height}, weight: {new_weight}")
@@ -173,11 +199,5 @@ def home():
 
 
 if __name__ == "__main__":
-
-
-    # with app.app_context():
-    #     response = get_image_url(1)
-    #     print(response.data.decode('utf-8'))
-
     # Run the Flask app
-    app.run(port=5012)
+    app.run(host="0.0.0.0", port=5000)
